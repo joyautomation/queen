@@ -10,6 +10,7 @@ import {
   createSessionRecord,
   updateSessionAgentId,
   endSessionRecord,
+  addSessionCost,
 } from "../db/queries";
 import { truncate } from "../utils/discord";
 
@@ -216,6 +217,11 @@ async function runQuery(
   if (result.sessionId && !pawn.sessionId) {
     pawn.sessionId = result.sessionId;
     updateSessionAgentId(pawn.threadId, result.sessionId);
+  }
+
+  // Track cost
+  if (result.costUsd > 0) {
+    addSessionCost(pawn.threadId, result.costUsd);
   }
 
   if (result.error || pawn.abortController.signal.aborted) {

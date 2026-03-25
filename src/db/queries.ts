@@ -86,6 +86,12 @@ export function getSessionRecord(
     .get(threadId) as SessionRecord | undefined;
 }
 
+export function addSessionCost(threadId: string, cost: number): void {
+  getDb()
+    .prepare("UPDATE sessions SET cost_usd = cost_usd + ? WHERE thread_id = ?")
+    .run(cost, threadId);
+}
+
 /** Mark all sessions that were 'running' as 'interrupted' (bot crashed/restarted). */
 export function markStaleSessions(): number {
   const result = getDb()

@@ -32,9 +32,16 @@ function initSchema(db: Database.Database): void {
       started_at TEXT NOT NULL DEFAULT (datetime('now')),
       ended_at TEXT,
       status TEXT NOT NULL DEFAULT 'running',
+      cost_usd REAL NOT NULL DEFAULT 0,
       FOREIGN KEY (project_name) REFERENCES projects(name) ON DELETE SET NULL
     );
   `);
+
+  // Migration: add cost_usd column if it doesn't exist (existing DBs)
+  const cols = db.pragma("table_info(sessions)") as any[];
+  if (!cols.some((c: any) => c.name === "cost_usd")) {
+    db.exec("ALTER TABLE sessions ADD COLUMN cost_usd REAL NOT NULL DEFAULT 0");
+  }
 }
 
 export function closeDb(): void {

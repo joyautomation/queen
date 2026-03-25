@@ -4,6 +4,7 @@ import { chunkMessage } from "../utils/discord";
 export interface StreamResult {
   sessionId: string | null;
   error: boolean;
+  costUsd: number;
 }
 
 /**
@@ -16,6 +17,7 @@ export async function streamToDiscord(
   signal: AbortSignal,
 ): Promise<StreamResult> {
   let sessionId: string | null = null;
+  let costUsd = 0;
 
   // Keep the typing indicator alive while the session runs
   const typingInterval = setInterval(() => {
@@ -91,6 +93,9 @@ export async function streamToDiscord(
       if (msg.type === "result") {
         await flushTools();
         sessionId = msg.session_id ?? sessionId;
+        if (typeof msg.total_cost_usd === "number") {
+          costUsd += msg.total_cost_usd;
+        }
         if (msg.subtype === "success") {
           const cost =
             typeof msg.total_cost_usd === "number"
@@ -120,13 +125,13 @@ export async function streamToDiscord(
         .send(`**Error**: ${err.message?.slice(0, 1800) ?? "unknown"}`)
         .catch(() => {});
     }
-    return { sessionId, error: true };
+    return { sessionId, error: true, costUsd };
   } finally {
     clearTimeout(startupTimeout);
     clearInterval(typingInterval);
   }
 
-  return { sessionId, error: false };
+  return { sessionId, error: false, costUsd };
 }
 
 // ---------------------------------------------------------------------------

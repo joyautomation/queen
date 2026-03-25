@@ -100,7 +100,10 @@ export async function execute(
       .prepare(
         `SELECT
           COUNT(*) as total_sessions,
-          COUNT(CASE WHEN status = 'running' OR status = 'idle' OR status = 'interrupted' OR status = 'stopped' THEN 1 END) as resumable
+          COUNT(CASE WHEN status IN ('running','idle','interrupted','stopped') THEN 1 END) as resumable,
+          COALESCE(SUM(cost_usd), 0) as total_cost,
+          COALESCE(SUM(CASE WHEN started_at >= date('now') THEN cost_usd ELSE 0 END), 0) as today_cost,
+          COUNT(CASE WHEN started_at >= date('now') THEN 1 END) as today_sessions
         FROM sessions`,
       )
       .get() as any;
@@ -108,6 +111,10 @@ export async function execute(
     lines.push(
       `Sessions: ${stats.total_sessions} total, ${stats.resumable} resumable`,
     );
+    lines.push(
+      `Today: ${stats.today_sessions} sessions, $${stats.today_cost.toFixed(4)}`,
+    );
+    lines.push(`All time: $${stats.total_cost.toFixed(4)}`);
 
     await interaction.editReply(lines.join("\n"));
   } catch (err: any) {
