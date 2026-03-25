@@ -26,7 +26,9 @@ export async function streamToDiscord(
   let startupTimeout: ReturnType<typeof setTimeout> = undefined!;
 
   try {
+    console.error("[queen] streamToDiscord: entering try block");
     await thread.sendTyping();
+    console.error("[queen] streamToDiscord: sendTyping done, starting for-await");
 
     // Timeout if no messages arrive within 2 minutes (likely rate-limited or stuck)
     startupTimeout = setTimeout(async () => {
@@ -45,7 +47,7 @@ export async function streamToDiscord(
         clearTimeout(startupTimeout);
       }
       if (signal.aborted) break;
-      console.log(`[queen] Message: type=${msg.type} subtype=${msg.subtype ?? ""}`);
+      console.error(`[queen] Message: type=${msg.type} subtype=${(msg as any).subtype ?? ""}`);
 
       // --- System init: capture session ID ---
       if (msg.type === "system" && msg.subtype === "init") {

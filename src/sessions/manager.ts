@@ -192,11 +192,11 @@ async function runQuery(
 
   let session: AsyncIterable<any>;
   try {
-    console.log(`[queen] Starting query for thread ${pawn.threadId} in ${pawn.cwd}`);
+    console.error(`[queen] Starting query for thread ${pawn.threadId} in ${pawn.cwd} (resume=${pawn.sessionId ?? "none"})`);
     session = query({ prompt, options });
-    console.log(`[queen] Query created, starting stream`);
+    console.error(`[queen] Query created, starting stream`);
   } catch (err: any) {
-    console.error(`[queen] query() threw synchronously:`, err);
+    console.error(`[queen] query() threw:`, err);
     pawn.status = "dead";
     pawns.delete(pawn.threadId);
     endSessionRecord(pawn.threadId, "error");
