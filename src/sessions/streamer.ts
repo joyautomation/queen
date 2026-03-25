@@ -22,11 +22,30 @@ export async function streamToDiscord(
     thread.sendTyping().catch(() => {});
   }, 8_000);
 
+  let gotFirstMessage = false;
+  let startupTimeout: ReturnType<typeof setTimeout> = undefined!;
+
   try {
     await thread.sendTyping();
 
+    // Timeout if no messages arrive within 2 minutes (likely rate-limited or stuck)
+    startupTimeout = setTimeout(async () => {
+      if (!gotFirstMessage && !signal.aborted) {
+        await thread
+          .send(
+            "**Timed out** waiting for Claude to respond. You may be rate-limited or have too many concurrent sessions. Try again in a minute.",
+          )
+          .catch(() => {});
+      }
+    }, 120_000);
+
     for await (const msg of messages) {
+      if (!gotFirstMessage) {
+        gotFirstMessage = true;
+        clearTimeout(startupTimeout);
+      }
       if (signal.aborted) break;
+      console.log(`[queen] Message: type=${msg.type} subtype=${msg.subtype ?? ""}`);
 
       // --- System init: capture session ID ---
       if (msg.type === "system" && msg.subtype === "init") {
@@ -79,6 +98,7 @@ export async function streamToDiscord(
     }
     return { sessionId, error: true };
   } finally {
+    clearTimeout(startupTimeout);
     clearInterval(typingInterval);
   }
 
