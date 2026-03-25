@@ -169,6 +169,15 @@ async function runQuery(
     permissionMode: "auto",
     abortController: pawn.abortController,
     settingSources: ["user", "project", "local"],
+    allowedTools: [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Agent",
+      "Bash",
+    ],
     canUseTool: createPermissionHandler(thread, pawn.abortController.signal),
     systemPrompt: {
       type: "preset",
