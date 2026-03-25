@@ -177,6 +177,8 @@ function stripEmoji(text: string): string {
 
 /**
  * Extract displayable text from an SDKAssistantMessage.
+ * Text blocks are returned as-is. Tool use blocks are batched
+ * into a compact summary line.
  *
  * Content blocks can be:
  *  - { type: "text", text: string }
@@ -188,39 +190,43 @@ function extractAssistantText(msg: any): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
 
-  const parts: string[] = [];
+  const textParts: string[] = [];
+  const toolNames: string[] = [];
 
   for (const block of content) {
     if (block.type === "text") {
-      parts.push(block.text);
+      textParts.push(block.text);
     } else if (block.type === "tool_use") {
-      parts.push(formatToolUse(block));
+      toolNames.push(block.name ?? "unknown");
     }
   }
 
-  return parts.join("\n");
+  // Append a compact tool summary if there were any tool calls
+  if (toolNames.length > 0) {
+    textParts.push(summarizeTools(toolNames));
+  }
+
+  return textParts.join("\n");
 }
 
-function formatToolUse(block: any): string {
-  const name: string = block.name ?? "unknown";
-  const input = block.input ?? {};
-
-  switch (name) {
-    case "Read":
-      return `> \`Read\` \u2014 ${input.file_path ?? ""}`;
-    case "Write":
-      return `> \`Write\` \u2014 ${input.file_path ?? ""}`;
-    case "Edit":
-      return `> \`Edit\` \u2014 ${input.file_path ?? ""}`;
-    case "Bash": {
-      const cmd = String(input.command ?? "").split("\n")[0].slice(0, 120);
-      return `> \`Bash\` \u2014 \`${cmd}\``;
-    }
-    case "Glob":
-      return `> \`Glob\` \u2014 ${input.pattern ?? ""}`;
-    case "Grep":
-      return `> \`Grep\` \u2014 ${input.pattern ?? ""}`;
-    default:
-      return `> \`${name}\``;
+/**
+ * Collapse a list of tool names into a single summary line.
+ * e.g. ["Read", "Read", "Bash", "Glob", "Read"] -> "> `6 tool calls` — 3x Read, 1x Bash, 1x Glob"
+ */
+function summarizeTools(names: string[]): string {
+  // Count occurrences
+  const counts = new Map<string, number>();
+  for (const name of names) {
+    counts.set(name, (counts.get(name) ?? 0) + 1);
   }
+
+  const parts = Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => (count > 1 ? `${count}x ${name}` : name));
+
+  const total = names.length;
+  if (total === 1) {
+    return `> \`${names[0]}\``;
+  }
+  return `> \`${total} tool calls\` \u2014 ${parts.join(", ")}`;
 }
