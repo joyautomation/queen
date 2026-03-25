@@ -1,0 +1,106 @@
+import { getDb } from "./schema";
+
+export interface Project {
+  name: string;
+  path: string;
+  created_at: string;
+}
+
+export interface SessionRecord {
+  thread_id: string;
+  channel_id: string;
+  project_name: string | null;
+  cwd: string;
+  prompt: string;
+  session_id: string | null;
+  started_at: string;
+  ended_at: string | null;
+  status: string;
+}
+
+// --- Projects ---
+
+export function addProject(name: string, projectPath: string): void {
+  getDb()
+    .prepare("INSERT OR REPLACE INTO projects (name, path) VALUES (?, ?)")
+    .run(name, projectPath);
+}
+
+export function removeProject(name: string): boolean {
+  const result = getDb()
+    .prepare("DELETE FROM projects WHERE name = ?")
+    .run(name);
+  return result.changes > 0;
+}
+
+export function getProject(name: string): Project | undefined {
+  return getDb()
+    .prepare("SELECT * FROM projects WHERE name = ?")
+    .get(name) as Project | undefined;
+}
+
+export function listProjects(): Project[] {
+  return getDb()
+    .prepare("SELECT * FROM projects ORDER BY name")
+    .all() as Project[];
+}
+
+// --- Sessions ---
+
+export function createSessionRecord(
+  threadId: string,
+  channelId: string,
+  cwd: string,
+  prompt: string,
+  projectName: string | null,
+): void {
+  getDb()
+    .prepare(
+      "INSERT INTO sessions (thread_id, channel_id, cwd, prompt, project_name) VALUES (?, ?, ?, ?, ?)",
+    )
+    .run(threadId, channelId, cwd, prompt, projectName);
+}
+
+export function updateSessionAgentId(
+  threadId: string,
+  sessionId: string,
+): void {
+  getDb()
+    .prepare("UPDATE sessions SET session_id = ? WHERE thread_id = ?")
+    .run(sessionId, threadId);
+}
+
+export function endSessionRecord(threadId: string, status: string): void {
+  getDb()
+    .prepare(
+      "UPDATE sessions SET ended_at = datetime('now'), status = ? WHERE thread_id = ?",
+    )
+    .run(status, threadId);
+}
+
+export function getSessionRecord(
+  threadId: string,
+): SessionRecord | undefined {
+  return getDb()
+    .prepare("SELECT * FROM sessions WHERE thread_id = ?")
+    .get(threadId) as SessionRecord | undefined;
+}
+
+/** Mark all sessions that were 'running' as 'interrupted' (bot crashed/restarted). */
+export function markStaleSessions(): number {
+  const result = getDb()
+    .prepare(
+      "UPDATE sessions SET status = 'interrupted' WHERE status = 'running'",
+    )
+    .run();
+  return result.changes;
+}
+
+/** Get all sessions that are resumable (have a session_id, not ended). */
+export function getDormantSessions(): SessionRecord[] {
+  return getDb()
+    .prepare(
+      "SELECT * FROM sessions WHERE session_id IS NOT NULL AND ended_at IS NULL ORDER BY started_at DESC",
+    )
+    .all() as SessionRecord[];
+}
