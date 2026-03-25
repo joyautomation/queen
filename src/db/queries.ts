@@ -56,7 +56,7 @@ export function createSessionRecord(
 ): void {
   getDb()
     .prepare(
-      "INSERT INTO sessions (thread_id, channel_id, cwd, prompt, project_name) VALUES (?, ?, ?, ?, ?)",
+      "INSERT OR REPLACE INTO sessions (thread_id, channel_id, cwd, prompt, project_name) VALUES (?, ?, ?, ?, ?)",
     )
     .run(threadId, channelId, cwd, prompt, projectName);
 }
