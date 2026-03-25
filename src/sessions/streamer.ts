@@ -36,7 +36,7 @@ export async function streamToDiscord(
 
       // --- Assistant turn ---
       if (msg.type === "assistant") {
-        const text = extractAssistantText(msg);
+        const text = formatForDiscord(extractAssistantText(msg));
         if (text.trim()) {
           for (const chunk of chunkMessage(text.trim())) {
             await thread.send(chunk);
@@ -88,6 +88,23 @@ export async function streamToDiscord(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Detect markdown tables and wrap them in code blocks so Discord
+ * renders them with aligned monospace text instead of raw pipes.
+ */
+function formatForDiscord(text: string): string {
+  // Match consecutive lines that look like markdown table rows (start with |)
+  // including the separator line (|---|---|)
+  return text.replace(
+    /(?:^|\n)((?:\|.+\|[ \t]*\n){2,})/g,
+    (_match, table: string) => {
+      // Only wrap if it contains a separator row (|---|)
+      if (!/\|[-: ]+\|/.test(table)) return _match;
+      return `\n\`\`\`\n${table.trim()}\n\`\`\`\n`;
+    },
+  );
+}
 
 /**
  * Extract displayable text from an SDKAssistantMessage.
