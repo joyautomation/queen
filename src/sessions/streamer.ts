@@ -41,6 +41,18 @@ export async function streamToDiscord(
       }
     }, 120_000);
 
+    // Accumulate tool-only turns; flush when Claude speaks or session ends
+    let pendingTools: any[] = [];
+
+    const flushTools = async () => {
+      if (pendingTools.length === 0) return;
+      const summary = summarizeTools(pendingTools);
+      pendingTools = [];
+      for (const chunk of chunkMessage(summary)) {
+        await thread.send(chunk);
+      }
+    };
+
     for await (const msg of messages) {
       if (!gotFirstMessage) {
         gotFirstMessage = true;
@@ -57,9 +69,18 @@ export async function streamToDiscord(
 
       // --- Assistant turn ---
       if (msg.type === "assistant") {
-        const text = formatForDiscord(extractAssistantText(msg));
+        const { text, tools } = extractAssistantParts(msg);
+
+        // Accumulate tool blocks
+        if (tools.length > 0) {
+          pendingTools.push(...tools);
+        }
+
+        // If there's text, flush accumulated tools first, then send text
         if (text.trim()) {
-          for (const chunk of chunkMessage(text.trim())) {
+          await flushTools();
+          const formatted = formatForDiscord(text.trim());
+          for (const chunk of chunkMessage(formatted)) {
             await thread.send(chunk);
           }
         }
@@ -68,6 +89,7 @@ export async function streamToDiscord(
 
       // --- Result (success / error) ---
       if (msg.type === "result") {
+        await flushTools();
         sessionId = msg.session_id ?? sessionId;
         if (msg.subtype === "success") {
           const cost =
@@ -206,29 +228,24 @@ function stripEmoji(text: string): string {
  *  - { type: "text", text: string }
  *  - { type: "tool_use", name: string, input: object }
  */
-function extractAssistantText(msg: any): string {
+function extractAssistantParts(msg: any): { text: string; tools: any[] } {
   const content = msg?.message?.content;
-  if (!content) return "";
-  if (typeof content === "string") return content;
-  if (!Array.isArray(content)) return "";
+  if (!content) return { text: "", tools: [] };
+  if (typeof content === "string") return { text: content, tools: [] };
+  if (!Array.isArray(content)) return { text: "", tools: [] };
 
   const textParts: string[] = [];
-  const toolBlocks: any[] = [];
+  const tools: any[] = [];
 
   for (const block of content) {
     if (block.type === "text") {
       textParts.push(block.text);
     } else if (block.type === "tool_use") {
-      toolBlocks.push(block);
+      tools.push(block);
     }
   }
 
-  // Append tool summary if there were any tool calls
-  if (toolBlocks.length > 0) {
-    textParts.push(summarizeTools(toolBlocks));
-  }
-
-  return textParts.join("\n");
+  return { text: textParts.join("\n"), tools };
 }
 
 /**
