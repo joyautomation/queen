@@ -90,19 +90,88 @@ export async function streamToDiscord(
 // ---------------------------------------------------------------------------
 
 /**
- * Detect markdown tables and wrap them in code blocks so Discord
- * renders them with aligned monospace text instead of raw pipes.
+ * Detect markdown tables and reformat them as properly aligned
+ * code blocks for Discord's monospace rendering.
  */
 function formatForDiscord(text: string): string {
-  // Match consecutive lines that look like markdown table rows (start with |)
-  // including the separator line (|---|---|)
   return text.replace(
     /(?:^|\n)((?:\|.+\|[ \t]*\n){2,})/g,
     (_match, table: string) => {
-      // Only wrap if it contains a separator row (|---|)
       if (!/\|[-: ]+\|/.test(table)) return _match;
-      return `\n\`\`\`\n${table.trim()}\n\`\`\`\n`;
+      return `\n\`\`\`\n${alignTable(table.trim())}\n\`\`\`\n`;
     },
+  );
+}
+
+/**
+ * Parse a markdown table, strip emoji, and re-pad columns so they
+ * align correctly in a monospace code block.
+ */
+function alignTable(table: string): string {
+  const lines = table.split("\n").filter((l) => l.trim());
+
+  // Parse each row into cells
+  const rows = lines.map((line) =>
+    line
+      .replace(/^\||\|$/g, "")
+      .split("|")
+      .map((cell) => stripEmoji(cell.trim())),
+  );
+
+  // Find the separator row and remove it — we'll regenerate it
+  const sepIndex = rows.findIndex((row) =>
+    row.every((cell) => /^[-: ]+$/.test(cell)),
+  );
+
+  const dataRows = rows.filter((_, i) => i !== sepIndex);
+  if (dataRows.length === 0) return table;
+
+  // Calculate max width per column
+  const colCount = Math.max(...dataRows.map((r) => r.length));
+  const widths: number[] = Array(colCount).fill(0);
+  for (const row of dataRows) {
+    for (let i = 0; i < colCount; i++) {
+      widths[i] = Math.max(widths[i], (row[i] ?? "").length);
+    }
+  }
+
+  // Rebuild the table with padding
+  const formatRow = (row: string[]) =>
+    "| " +
+    widths.map((w, i) => (row[i] ?? "").padEnd(w)).join(" | ") +
+    " |";
+
+  const separator =
+    "| " + widths.map((w) => "-".repeat(w)).join(" | ") + " |";
+
+  const result: string[] = [];
+  for (let i = 0; i < dataRows.length; i++) {
+    result.push(formatRow(dataRows[i]));
+    // Insert separator after the header row
+    if (i === 0) result.push(separator);
+  }
+
+  return result.join("\n");
+}
+
+/**
+ * Strip emoji characters from a string so monospace alignment works.
+ * Replaces common status emoji with text equivalents.
+ */
+function stripEmoji(text: string): string {
+  return (
+    text
+      // Common status emoji → text
+      .replace(/\u2705|\u{1F7E2}/gu, "[ok]")
+      .replace(/\u274C|\u{1F534}/gu, "[x]")
+      .replace(/\u{1F7E1}/gu, "[!]")
+      .replace(/\u23f3|\u231b/gu, "[..]")
+      // Strip any remaining emoji (supplementary plane + variation selectors)
+      .replace(
+        /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}]/gu,
+        "",
+      )
+      .trim()
   );
 }
 
