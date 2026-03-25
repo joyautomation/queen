@@ -73,9 +73,11 @@ export function createClient(): Client {
 
   // --- Thread follow-ups ---
   client.on(Events.MessageCreate, async (message) => {
-    // Ignore bots and non-thread messages
+    // Ignore bots, system messages, and non-thread messages
     if (message.author.bot) return;
+    if (message.system) return;
     if (!message.channel.isThread()) return;
+    if (!message.content?.trim()) return;
 
     const threadId = message.channel.id;
     const pawn = getPawn(threadId);
