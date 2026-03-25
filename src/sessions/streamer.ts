@@ -213,32 +213,37 @@ function extractAssistantText(msg: any): string {
   if (!Array.isArray(content)) return "";
 
   const textParts: string[] = [];
-  const toolNames: string[] = [];
+  const toolBlocks: any[] = [];
 
   for (const block of content) {
     if (block.type === "text") {
       textParts.push(block.text);
     } else if (block.type === "tool_use") {
-      toolNames.push(block.name ?? "unknown");
+      toolBlocks.push(block);
     }
   }
 
-  // Append a compact tool summary if there were any tool calls
-  if (toolNames.length > 0) {
-    textParts.push(summarizeTools(toolNames));
+  // Append tool summary if there were any tool calls
+  if (toolBlocks.length > 0) {
+    textParts.push(summarizeTools(toolBlocks));
   }
 
   return textParts.join("\n");
 }
 
 /**
- * Collapse a list of tool names into a single summary line.
- * e.g. ["Read", "Read", "Bash", "Glob", "Read"] -> "> `6 tool calls` — 3x Read, 1x Bash, 1x Glob"
+ * Summarize tool use blocks.
+ * - 1-3 tools: show each with detail (file path, command, etc.)
+ * - 4+ tools: collapse into a count summary
  */
-function summarizeTools(names: string[]): string {
-  // Count occurrences
+function summarizeTools(blocks: any[]): string {
+  if (blocks.length <= 3) {
+    return blocks.map(formatToolDetail).join("\n");
+  }
+
   const counts = new Map<string, number>();
-  for (const name of names) {
+  for (const b of blocks) {
+    const name = b.name ?? "unknown";
     counts.set(name, (counts.get(name) ?? 0) + 1);
   }
 
@@ -246,9 +251,33 @@ function summarizeTools(names: string[]): string {
     .sort((a, b) => b[1] - a[1])
     .map(([name, count]) => (count > 1 ? `${count}x ${name}` : name));
 
-  const total = names.length;
-  if (total === 1) {
-    return `> \`${names[0]}\``;
+  return `> \`${blocks.length} tool calls\` \u2014 ${parts.join(", ")}`;
+}
+
+function formatToolDetail(block: any): string {
+  const name: string = block.name ?? "unknown";
+  const input = block.input ?? {};
+
+  switch (name) {
+    case "Read":
+      return `> \`Read\` \u2014 ${input.file_path ?? ""}`;
+    case "Write":
+      return `> \`Write\` \u2014 ${input.file_path ?? ""}`;
+    case "Edit":
+      return `> \`Edit\` \u2014 ${input.file_path ?? ""}`;
+    case "Bash": {
+      const cmd = String(input.command ?? "").split("\n")[0].slice(0, 120);
+      return `> \`Bash\` \u2014 \`${cmd}\``;
+    }
+    case "Glob":
+      return `> \`Glob\` \u2014 ${input.pattern ?? ""}`;
+    case "Grep":
+      return `> \`Grep\` \u2014 ${input.pattern ?? ""}`;
+    case "ToolSearch":
+      return `> \`ToolSearch\``;
+    case "Agent":
+      return `> \`Agent\``;
+    default:
+      return `> \`${name}\``;
   }
-  return `> \`${total} tool calls\` \u2014 ${parts.join(", ")}`;
 }
