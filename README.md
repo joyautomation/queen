@@ -181,6 +181,53 @@ queen/
 └── queen-spec.md             # Original design spec
 ```
 
+## Running with systemd
+
+To run Queen as a persistent service, create a user-level systemd unit:
+
+```bash
+mkdir -p ~/.config/systemd/user
+```
+
+Create `~/.config/systemd/user/queen.service`:
+
+```ini
+[Unit]
+Description=Queen Discord Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/queen
+ExecStart=/usr/bin/npx tsx src/index.ts
+Restart=on-failure
+RestartSec=10
+EnvironmentFile=/path/to/queen/.env
+
+# Ensure Claude Code and other tools are on PATH
+Environment=PATH=/home/%u/.deno/bin:/home/%u/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/home/%u
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=default.target
+```
+
+Update `WorkingDirectory`, `EnvironmentFile`, and `PATH` to match your setup, then enable and start:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable queen
+systemctl --user start queen
+
+# Check status and logs
+systemctl --user status queen
+journalctl --user -u queen -f
+```
+
+> **Note:** User-level services only run while you're logged in unless you enable lingering: `sudo loginctl enable-linger $USER`
+
 ## Tech Stack
 
 - **TypeScript** with [tsx](https://github.com/privatenumber/tsx) for execution
