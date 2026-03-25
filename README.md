@@ -114,46 +114,60 @@ Queen uses Claude Code's **auto** permission mode:
 
 ## Discord Bot Setup
 
+If you've never created a Discord bot before, see Discord's [Getting Started](https://discord.com/developers/docs/getting-started) guide and [Developer Portal documentation](https://discord.com/developers/docs/intro) for full context.
+
 ### 1. Create the Application
 
-1. Go to [discord.com/developers/applications](https://discord.com/developers/applications)
-2. Click **New Application**, name it whatever you like
-3. Copy the **Application ID** and paste it as `DISCORD_APP_ID` in `.env`
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click **New Application**, name it (e.g. "Queen")
+3. On the **General Information** page, copy the **Application ID** and paste it as `DISCORD_APP_ID` in your `.env`
 
-### 2. Create the Bot
+> See [Setting Up a Bot Application](https://discord.com/developers/docs/quick-start/getting-started#setting-up-a-bot-application) for more details.
 
-1. Go to the **Bot** tab
-2. Click **Reset Token**, copy it, paste as `DISCORD_BOT_TOKEN` in `.env`
-3. Under **Privileged Gateway Intents**, enable **Message Content Intent**
+### 2. Configure the Bot
 
-### 3. Invite the Bot
+1. Go to the **Bot** tab in the left sidebar
+2. Click **Reset Token**, copy the token, and paste it as `DISCORD_BOT_TOKEN` in your `.env`
+   - This is the only time the token is shown -- store it securely
+3. Under **Privileged Gateway Intents**, enable:
+   - **Message Content Intent** -- required for reading thread replies
 
-Go to **OAuth2 > URL Generator**:
+> See Discord's docs on [Gateway Intents](https://discord.com/developers/docs/events/gateway#gateway-intents) and [Privileged Intents](https://discord.com/developers/docs/events/gateway#privileged-intents) for background.
 
-**Scopes:** `bot`, `applications.commands`
+### 3. Invite the Bot to Your Server
 
-**Bot Permissions:**
-- View Channels
-- Send Messages
-- Create Public Threads
-- Send Messages in Threads
-- Manage Threads
-- Read Message History
-- Embed Links
-- Add Reactions
-- Use Slash Commands
+1. Go to **OAuth2 > URL Generator** in the left sidebar
+2. Under **Scopes**, select:
+   - `bot`
+   - `applications.commands`
+3. Under **Bot Permissions**, select:
 
-Open the generated URL and select your server.
+| Permission | Why |
+|---|---|
+| View Channels | See channels to interact with |
+| Send Messages | Post responses in channels |
+| Create Public Threads | Create a thread for each pawn session |
+| Send Messages in Threads | Stream Claude's output into threads |
+| Manage Threads | Archive/unarchive threads on session end/resume |
+| Read Message History | Read context in threads the bot joins |
+| Embed Links | Format links in responses |
+| Add Reactions | React with hourglass when messages are queued |
+| Use Slash Commands | Register and respond to slash commands |
 
-### 4. Guild ID (optional)
+4. Copy the generated URL at the bottom of the page
+5. Open it in your browser and select which server to add the bot to
 
-For instant slash command registration during development:
+> See [Adding Your Bot to a Server](https://discord.com/developers/docs/quick-start/getting-started#adding-your-app-to-a-server) for more details.
 
-1. Enable Developer Mode in Discord (Settings > Advanced)
-2. Right-click your server name > Copy Server ID
-3. Set as `DISCORD_GUILD_ID` in `.env`
+### 4. Guild ID (recommended for development)
 
-Without this, global commands can take up to an hour to propagate.
+Without a guild ID, slash commands register globally and can take up to an hour to propagate. With a guild ID, they're available instantly.
+
+1. In Discord, go to **Settings > Advanced** and enable **Developer Mode** ([docs](https://support-dev.discord.com/hc/en-us/articles/27698853506327-How-to-Enable-Developer-Mode))
+2. Right-click your server name in the sidebar > **Copy Server ID**
+3. Paste it as `DISCORD_GUILD_ID` in your `.env`
+
+> See Discord's docs on [Registering Commands](https://discord.com/developers/docs/interactions/application-commands#registering-a-command) for the difference between guild and global commands.
 
 ## Project Structure
 
