@@ -13,6 +13,7 @@ import { getSessionRecord } from "./db/queries";
 import * as spawnCmd from "./commands/spawn";
 import * as projectCmd from "./commands/project";
 import * as killCmd from "./commands/kill";
+import * as stopCmd from "./commands/stop";
 import * as pawnsCmd from "./commands/pawns";
 
 // ---------------------------------------------------------------------------
@@ -28,6 +29,7 @@ const commands = new Map<string, Command>();
 commands.set("spawn", spawnCmd);
 commands.set("project", projectCmd);
 commands.set("kill", killCmd);
+commands.set("stop", stopCmd);
 commands.set("pawns", pawnsCmd);
 
 // ---------------------------------------------------------------------------
@@ -82,6 +84,7 @@ export function createClient(): Client {
     if (!pawn) {
       const oldSession = getSessionRecord(threadId);
       if (!oldSession) return; // Not a pawn thread at all
+      if (oldSession.status === "killed") return; // Explicitly killed — not resumable
 
       // Unarchive the thread if Discord archived it
       if (message.channel.archived) {

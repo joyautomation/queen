@@ -117,7 +117,7 @@ export function sendFollowUp(
 }
 
 /**
- * Kill a running pawn.
+ * Kill a running pawn permanently (not resumable).
  */
 export function killPawn(threadId: string): boolean {
   const pawn = pawns.get(threadId);
@@ -128,6 +128,21 @@ export function killPawn(threadId: string): boolean {
   pawn.messageQueue.length = 0;
   pawns.delete(threadId);
   endSessionRecord(threadId, "killed");
+  return true;
+}
+
+/**
+ * Stop a running pawn gracefully (resumable by replying in thread).
+ */
+export function stopPawn(threadId: string): boolean {
+  const pawn = pawns.get(threadId);
+  if (!pawn) return false;
+
+  pawn.abortController.abort();
+  pawn.status = "dead";
+  pawn.messageQueue.length = 0;
+  pawns.delete(threadId);
+  endSessionRecord(threadId, "stopped");
   return true;
 }
 

@@ -96,11 +96,11 @@ export function markStaleSessions(): number {
   return result.changes;
 }
 
-/** Get all sessions that are resumable (have a session_id, not ended). */
+/** Get all sessions that are resumable (have a session_id, not killed). */
 export function getDormantSessions(): SessionRecord[] {
   return getDb()
     .prepare(
-      "SELECT * FROM sessions WHERE session_id IS NOT NULL AND ended_at IS NULL ORDER BY started_at DESC",
+      "SELECT * FROM sessions WHERE session_id IS NOT NULL AND status NOT IN ('killed', 'error') ORDER BY started_at DESC",
     )
     .all() as SessionRecord[];
 }
