@@ -15,6 +15,15 @@ import { truncate } from "../utils/discord";
 
 const MAX_PAWNS = Number(process.env.QUEEN_MAX_PAWNS) || 5;
 
+const DISCORD_SYSTEM_PROMPT = `
+Your output is displayed in a Discord thread, not a terminal. Format accordingly:
+- Discord does NOT render markdown tables. Use code blocks (\`\`\`) for any tabular data.
+- Discord renders bold (**bold**), italic (*italic*), code (\`code\`), code blocks, blockquotes (>), and links. Headings (#) do work but are large — prefer **bold** for section labels.
+- Messages are split at 2000 characters. Keep responses concise.
+- Lists and bullet points render fine.
+- Avoid HTML tags — Discord ignores them.
+`.trim();
+
 export interface Pawn {
   threadId: string;
   channelId: string;
@@ -161,6 +170,11 @@ async function runQuery(
     abortController: pawn.abortController,
     settingSources: ["user", "project", "local"],
     canUseTool: createPermissionHandler(thread, pawn.abortController.signal),
+    systemPrompt: {
+      type: "preset",
+      preset: "claude_code",
+      append: DISCORD_SYSTEM_PROMPT,
+    },
   };
 
   if (pawn.sessionId) {
