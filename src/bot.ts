@@ -20,6 +20,8 @@ import * as stopCmd from "./commands/stop";
 import * as pawnsCmd from "./commands/pawns";
 import * as usageCmd from "./commands/usage";
 import * as configCmd from "./commands/config";
+import * as modelCmd from "./commands/model";
+import * as effortCmd from "./commands/effort";
 
 // ---------------------------------------------------------------------------
 // Command registry
@@ -38,6 +40,8 @@ commands.set("stop", stopCmd);
 commands.set("pawns", pawnsCmd);
 commands.set("usage", usageCmd);
 commands.set("config", configCmd);
+commands.set("model", modelCmd);
+commands.set("effort", effortCmd);
 
 // ---------------------------------------------------------------------------
 // Client

@@ -60,6 +60,20 @@ export function listPawns(): Pawn[] {
   return Array.from(pawns.values());
 }
 
+export function setPawnModel(threadId: string, model: string): boolean {
+  const pawn = pawns.get(threadId);
+  if (!pawn) return false;
+  pawn.model = model;
+  return true;
+}
+
+export function setPawnEffort(threadId: string, effort: string): boolean {
+  const pawn = pawns.get(threadId);
+  if (!pawn) return false;
+  pawn.effort = effort;
+  return true;
+}
+
 /**
  * Spawn a new Claude Code session tied to a Discord thread.
  * The session runs in the background — this function returns immediately
