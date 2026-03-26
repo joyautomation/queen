@@ -14,7 +14,7 @@ import {
   setProjectDefaults,
 } from "../db/queries";
 import { spawnPawn } from "../sessions/manager";
-import { truncate } from "../utils/discord";
+import { truncate, shortModel } from "../utils/discord";
 
 export const data = new SlashCommandBuilder()
   .setName("project")
@@ -262,13 +262,15 @@ async function handleSpawn(
       autoArchiveDuration: 1440,
     });
 
-    await thread.send(
-      `**Project:** ${name}\n**Prompt:** ${prompt}\n**Directory:** \`${project.path}\`\n\u2500\u2500\u2500`,
-    );
-
     const model = interaction.options.getString("model") ?? undefined;
     const effort = interaction.options.getString("effort") ?? undefined;
-    spawnPawn(thread, project.path, prompt, name, null, { model, effort });
+    const resolved = spawnPawn(thread, project.path, prompt, name, null, { model, effort });
+
+    const modelLabel = shortModel(resolved.model);
+    const effortLabel = resolved.effort ?? "default";
+    await thread.send(
+      `**Project:** ${name}\n**Prompt:** ${prompt}\n**Directory:** \`${project.path}\`\n**Model:** ${modelLabel} | **Effort:** ${effortLabel}\n\u2500\u2500\u2500`,
+    );
 
     await interaction.editReply(`Pawn spawned \u2192 ${thread}`);
   } catch (err: any) {

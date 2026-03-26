@@ -7,7 +7,7 @@ import {
 import { existsSync } from "fs";
 import { resolve } from "path";
 import { spawnPawn } from "../sessions/manager";
-import { truncate } from "../utils/discord";
+import { truncate, shortModel } from "../utils/discord";
 
 export const data = new SlashCommandBuilder()
   .setName("spawn")
@@ -84,13 +84,15 @@ export async function execute(
       autoArchiveDuration: 1440,
     });
 
-    await thread.send(
-      `**Prompt:** ${prompt}\n**Directory:** \`${cwd}\`\n\u2500\u2500\u2500`,
-    );
-
     const model = interaction.options.getString("model") ?? undefined;
     const effort = interaction.options.getString("effort") ?? undefined;
-    spawnPawn(thread, cwd, prompt, null, null, { model, effort });
+    const resolved = spawnPawn(thread, cwd, prompt, null, null, { model, effort });
+
+    const modelLabel = shortModel(resolved.model);
+    const effortLabel = resolved.effort ?? "default";
+    await thread.send(
+      `**Prompt:** ${prompt}\n**Directory:** \`${cwd}\`\n**Model:** ${modelLabel} | **Effort:** ${effortLabel}\n\u2500\u2500\u2500`,
+    );
 
     await interaction.editReply(`Pawn spawned \u2192 ${thread}`);
   } catch (err: any) {

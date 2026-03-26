@@ -38,6 +38,12 @@ export function truncate(text: string, max: number): string {
   return text.slice(0, max - 1) + "\u2026";
 }
 
+/** Format a model ID into a short display name. */
+export function shortModel(model: string | undefined): string {
+  if (!model) return "default";
+  return model.replace("claude-", "").replace(/-\d.*/, "");
+}
+
 /** Format seconds into a human-readable duration. */
 export function formatDuration(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);

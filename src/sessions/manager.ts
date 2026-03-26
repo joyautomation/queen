@@ -87,7 +87,7 @@ export function spawnPawn(
   projectName: string | null,
   resumeSessionId?: string | null,
   opts?: SpawnOptions,
-): void {
+): { model: string | undefined; effort: string | undefined } {
   if (pawns.size >= MAX_PAWNS) {
     throw new Error(
       `Max concurrent pawns reached (${MAX_PAWNS}). Kill a session first.`,
@@ -127,6 +127,8 @@ export function spawnPawn(
   runQuery(pawn, thread, prompt).catch((err) => {
     console.error(`[queen] Fatal error in pawn ${thread.id}:`, err);
   });
+
+  return { model, effort };
 }
 
 /**
