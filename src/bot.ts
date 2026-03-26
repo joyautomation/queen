@@ -5,10 +5,13 @@ import {
   Routes,
   ChatInputCommandInteraction,
   Events,
+  type Message,
+  type Attachment,
 } from "discord.js";
 import type { RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js";
 import { sendFollowUp, getPawn, spawnPawn } from "./sessions/manager";
 import { getSessionRecord } from "./db/queries";
+import { downloadAttachments } from "./utils/attachments";
 
 import * as spawnCmd from "./commands/spawn";
 import * as projectCmd from "./commands/project";
@@ -79,7 +82,14 @@ export function createClient(): Client {
     if (message.author.bot) return;
     if (message.system) return;
     if (!message.channel.isThread()) return;
-    if (!message.content?.trim()) return;
+
+    const hasText = !!message.content?.trim();
+    const hasAttachments = message.attachments.size > 0;
+    if (!hasText && !hasAttachments) return;
+
+    // Download any image/file attachments and build a prompt with file paths
+    const prompt = await buildPromptWithAttachments(message);
+    if (!prompt.trim()) return;
 
     const threadId = message.channel.id;
     const pawn = getPawn(threadId);
@@ -106,7 +116,7 @@ export function createClient(): Client {
         spawnPawn(
           message.channel,
           oldSession.cwd,
-          message.content,
+          prompt,
           oldSession.project_name,
           oldSession.session_id,
         );
@@ -118,7 +128,7 @@ export function createClient(): Client {
 
     const { queued, error } = sendFollowUp(
       message.channel,
-      message.content,
+      prompt,
     );
 
     if (error) {
@@ -161,4 +171,31 @@ async function registerCommands(): Promise<void> {
   } catch (err) {
     console.error("[queen] Failed to register commands:", err);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Attachment handling
+// ---------------------------------------------------------------------------
+
+async function buildPromptWithAttachments(message: Message): Promise<string> {
+  const parts: string[] = [];
+
+  if (message.content?.trim()) {
+    parts.push(message.content.trim());
+  }
+
+  if (message.attachments.size > 0) {
+    const paths = await downloadAttachments(
+      Array.from(message.attachments.values()),
+    );
+    if (paths.length > 0) {
+      parts.push(
+        paths
+          .map((p) => `[Attached file: ${p}] — use the Read tool to view this file`)
+          .join("\n"),
+      );
+    }
+  }
+
+  return parts.join("\n\n");
 }
