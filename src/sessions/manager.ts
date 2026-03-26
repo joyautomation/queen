@@ -12,6 +12,7 @@ import {
   endSessionRecord,
   addSessionCost,
   getConfig,
+  getProject,
 } from "../db/queries";
 import { truncate } from "../utils/discord";
 
@@ -94,8 +95,12 @@ export function spawnPawn(
   }
 
   const abortController = new AbortController();
-  const model = opts?.model || getConfig("default_model") || undefined;
-  const effort = opts?.effort || getConfig("default_effort") || undefined;
+  // Priority: spawn option > project default > global default
+  const project = projectName ? getProject(projectName) : undefined;
+  const model =
+    opts?.model || project?.default_model || getConfig("default_model") || undefined;
+  const effort =
+    opts?.effort || project?.default_effort || getConfig("default_effort") || undefined;
 
   const pawn: Pawn = {
     threadId: thread.id,

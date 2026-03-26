@@ -26,6 +26,8 @@ export interface Project {
   name: string;
   path: string;
   created_at: string;
+  default_model: string | null;
+  default_effort: string | null;
 }
 
 export interface SessionRecord {
@@ -65,6 +67,19 @@ export function listProjects(): Project[] {
   return getDb()
     .prepare("SELECT * FROM projects ORDER BY name")
     .all() as Project[];
+}
+
+export function setProjectDefaults(
+  name: string,
+  model: string | null,
+  effort: string | null,
+): boolean {
+  const result = getDb()
+    .prepare(
+      "UPDATE projects SET default_model = ?, default_effort = ? WHERE name = ?",
+    )
+    .run(model, effort, name);
+  return result.changes > 0;
 }
 
 // --- Sessions ---

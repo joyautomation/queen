@@ -11,6 +11,7 @@ import {
   removeProject,
   listProjects,
   getProject,
+  setProjectDefaults,
 } from "../db/queries";
 import { spawnPawn } from "../sessions/manager";
 import { truncate } from "../utils/discord";
@@ -82,6 +83,37 @@ export const data = new SlashCommandBuilder()
             { name: "max", value: "max" },
           ),
       ),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("config")
+      .setDescription("Set default model/effort for a project")
+      .addStringOption((opt) =>
+        opt.setName("name").setDescription("Project name").setRequired(true),
+      )
+      .addStringOption((opt) =>
+        opt
+          .setName("model")
+          .setDescription("Default model for this project")
+          .addChoices(
+            { name: "opus", value: "claude-opus-4-6" },
+            { name: "sonnet", value: "claude-sonnet-4-6" },
+            { name: "haiku", value: "claude-haiku-4-5" },
+            { name: "clear", value: "clear" },
+          ),
+      )
+      .addStringOption((opt) =>
+        opt
+          .setName("effort")
+          .setDescription("Default effort for this project")
+          .addChoices(
+            { name: "low", value: "low" },
+            { name: "medium", value: "medium" },
+            { name: "high", value: "high" },
+            { name: "max", value: "max" },
+            { name: "clear", value: "clear" },
+          ),
+      ),
   );
 
 export async function execute(
@@ -92,6 +124,8 @@ export async function execute(
   switch (sub) {
     case "add":
       return handleAdd(interaction);
+    case "config":
+      return handleConfig(interaction);
     case "list":
       return handleList(interaction);
     case "remove":
@@ -133,8 +167,51 @@ async function handleList(
     return;
   }
 
-  const lines = projects.map((p) => `**${p.name}** \u2014 \`${p.path}\``);
+  const lines = projects.map((p) => {
+    let line = `**${p.name}** \u2014 \`${p.path}\``;
+    const extras: string[] = [];
+    if (p.default_model) extras.push(p.default_model.replace("claude-", "").replace(/-\d.*/, ""));
+    if (p.default_effort) extras.push(p.default_effort);
+    if (extras.length > 0) line += ` (${extras.join(", ")})`;
+    return line;
+  });
   await interaction.reply(lines.join("\n"));
+}
+
+async function handleConfig(
+  interaction: ChatInputCommandInteraction,
+): Promise<void> {
+  const name = interaction.options.getString("name", true);
+  const project = getProject(name);
+
+  if (!project) {
+    await interaction.reply({
+      content: `Project **${name}** not found.`,
+      flags: 64,
+    });
+    return;
+  }
+
+  const model = interaction.options.getString("model");
+  const effort = interaction.options.getString("effort");
+
+  if (model === null && effort === null) {
+    // Show current config
+    const m = project.default_model ?? "*(global default)*";
+    const e = project.default_effort ?? "*(global default)*";
+    await interaction.reply(`**${name}** config:\nModel: ${m}\nEffort: ${e}`);
+    return;
+  }
+
+  // Update — "clear" means remove override, null means don't change
+  const newModel = model === "clear" ? null : (model ?? project.default_model);
+  const newEffort = effort === "clear" ? null : (effort ?? project.default_effort);
+  setProjectDefaults(name, newModel, newEffort);
+
+  const parts: string[] = [];
+  if (model !== null) parts.push(`model: **${model === "clear" ? "cleared" : model}**`);
+  if (effort !== null) parts.push(`effort: **${effort === "clear" ? "cleared" : effort}**`);
+  await interaction.reply(`Updated **${name}** \u2014 ${parts.join(", ")}`);
 }
 
 async function handleRemove(

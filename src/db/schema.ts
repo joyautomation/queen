@@ -42,10 +42,16 @@ function initSchema(db: Database.Database): void {
     );
   `);
 
-  // Migration: add cost_usd column if it doesn't exist (existing DBs)
-  const cols = db.pragma("table_info(sessions)") as any[];
-  if (!cols.some((c: any) => c.name === "cost_usd")) {
+  // Migrations for existing DBs
+  const sessionCols = db.pragma("table_info(sessions)") as any[];
+  if (!sessionCols.some((c: any) => c.name === "cost_usd")) {
     db.exec("ALTER TABLE sessions ADD COLUMN cost_usd REAL NOT NULL DEFAULT 0");
+  }
+
+  const projectCols = db.pragma("table_info(projects)") as any[];
+  if (!projectCols.some((c: any) => c.name === "default_model")) {
+    db.exec("ALTER TABLE projects ADD COLUMN default_model TEXT");
+    db.exec("ALTER TABLE projects ADD COLUMN default_effort TEXT");
   }
 }
 
