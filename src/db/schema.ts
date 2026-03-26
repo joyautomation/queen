@@ -53,6 +53,12 @@ function initSchema(db: Database.Database): void {
     db.exec("ALTER TABLE projects ADD COLUMN default_model TEXT");
     db.exec("ALTER TABLE projects ADD COLUMN default_effort TEXT");
   }
+
+  const sessionCols2 = db.pragma("table_info(sessions)") as any[];
+  if (!sessionCols2.some((c: any) => c.name === "model")) {
+    db.exec("ALTER TABLE sessions ADD COLUMN model TEXT");
+    db.exec("ALTER TABLE sessions ADD COLUMN effort TEXT");
+  }
 }
 
 export function closeDb(): void {

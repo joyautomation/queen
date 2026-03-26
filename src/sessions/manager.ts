@@ -13,6 +13,7 @@ import {
   addSessionCost,
   getConfig,
   getProject,
+  updateSessionModelEffort,
 } from "../db/queries";
 import { truncate } from "../utils/discord";
 
@@ -65,6 +66,7 @@ export function setPawnModel(threadId: string, model: string): boolean {
   const pawn = pawns.get(threadId);
   if (!pawn) return false;
   pawn.model = model;
+  updateSessionModelEffort(threadId, model, pawn.effort ?? null);
   return true;
 }
 
@@ -72,6 +74,7 @@ export function setPawnEffort(threadId: string, effort: string): boolean {
   const pawn = pawns.get(threadId);
   if (!pawn) return false;
   pawn.effort = effort;
+  updateSessionModelEffort(threadId, pawn.model ?? null, effort);
   return true;
 }
 
@@ -120,7 +123,7 @@ export function spawnPawn(
 
   // Only create a new DB record if this isn't a resume
   if (!resumeSessionId) {
-    createSessionRecord(thread.id, thread.parentId!, cwd, prompt, projectName);
+    createSessionRecord(thread.id, thread.parentId!, cwd, prompt, projectName, model, effort);
   }
 
   // Fire-and-forget the streaming loop

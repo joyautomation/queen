@@ -125,6 +125,10 @@ export function createClient(): Client {
           prompt,
           oldSession.project_name,
           oldSession.session_id,
+          {
+            model: oldSession.model ?? undefined,
+            effort: oldSession.effort ?? undefined,
+          },
         );
       } catch (err: any) {
         await message.reply(`Failed to respawn: ${err.message}`).catch(() => {});

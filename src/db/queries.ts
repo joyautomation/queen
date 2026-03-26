@@ -40,6 +40,8 @@ export interface SessionRecord {
   started_at: string;
   ended_at: string | null;
   status: string;
+  model: string | null;
+  effort: string | null;
 }
 
 // --- Projects ---
@@ -90,12 +92,14 @@ export function createSessionRecord(
   cwd: string,
   prompt: string,
   projectName: string | null,
+  model?: string | null,
+  effort?: string | null,
 ): void {
   getDb()
     .prepare(
-      "INSERT OR REPLACE INTO sessions (thread_id, channel_id, cwd, prompt, project_name) VALUES (?, ?, ?, ?, ?)",
+      "INSERT OR REPLACE INTO sessions (thread_id, channel_id, cwd, prompt, project_name, model, effort) VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
-    .run(threadId, channelId, cwd, prompt, projectName);
+    .run(threadId, channelId, cwd, prompt, projectName, model ?? null, effort ?? null);
 }
 
 export function updateSessionAgentId(
@@ -121,6 +125,16 @@ export function getSessionRecord(
   return getDb()
     .prepare("SELECT * FROM sessions WHERE thread_id = ?")
     .get(threadId) as SessionRecord | undefined;
+}
+
+export function updateSessionModelEffort(
+  threadId: string,
+  model: string | null,
+  effort: string | null,
+): void {
+  getDb()
+    .prepare("UPDATE sessions SET model = ?, effort = ? WHERE thread_id = ?")
+    .run(model, effort, threadId);
 }
 
 export function addSessionCost(threadId: string, cost: number): void {
