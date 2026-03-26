@@ -260,9 +260,13 @@ async function runQuery(
     return;
   }
 
-  // Check for queued messages
+  // Check for queued messages (sent while the session was working)
   if (pawn.messageQueue.length > 0) {
-    const queued = pawn.messageQueue.splice(0).join("\n\n");
+    const messages = pawn.messageQueue.splice(0);
+    const queued =
+      messages.length === 1
+        ? `BTW (sent while you were working): ${messages[0]}`
+        : `BTW (sent while you were working):\n${messages.map((m) => `- ${m}`).join("\n")}`;
     pawn.abortController = new AbortController();
     await runQuery(pawn, thread, queued);
     return;
