@@ -15,6 +15,7 @@ import {
 } from "../db/queries";
 import { spawnPawn } from "../sessions/manager";
 import { truncate, shortModel } from "../utils/discord";
+import { downloadAttachments } from "../utils/attachments";
 
 export const data = new SlashCommandBuilder()
   .setName("project")
@@ -71,6 +72,11 @@ export const data = new SlashCommandBuilder()
             { name: "sonnet", value: "claude-sonnet-4-6" },
             { name: "haiku", value: "claude-haiku-4-5" },
           ),
+      )
+      .addAttachmentOption((opt) =>
+        opt
+          .setName("image")
+          .setDescription("Attach an image or file for Claude to see"),
       )
       .addStringOption((opt) =>
         opt
@@ -264,7 +270,17 @@ async function handleSpawn(
 
     const model = interaction.options.getString("model") ?? undefined;
     const effort = interaction.options.getString("effort") ?? undefined;
-    const resolved = spawnPawn(thread, project.path, prompt, name, null, { model, effort });
+
+    let fullPrompt = prompt;
+    const attachment = interaction.options.getAttachment("image");
+    if (attachment) {
+      const paths = await downloadAttachments([attachment]);
+      if (paths.length > 0) {
+        fullPrompt += `\n\n[Attached file: ${paths[0]}] — use the Read tool to view this file`;
+      }
+    }
+
+    const resolved = spawnPawn(thread, project.path, fullPrompt, name, null, { model, effort });
 
     const modelLabel = shortModel(resolved.model);
     const effortLabel = resolved.effort ?? "default";
