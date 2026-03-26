@@ -26,6 +26,11 @@ export const data = new SlashCommandBuilder()
   )
   .addStringOption((opt) =>
     opt
+      .setName("name")
+      .setDescription("Custom thread name"),
+  )
+  .addStringOption((opt) =>
+    opt
       .setName("model")
       .setDescription("Model override (default: from /config)")
       .addChoices(
@@ -74,7 +79,7 @@ export async function execute(
 
   try {
     const thread = await (channel as TextChannel).threads.create({
-      name: truncate(prompt, 95),
+      name: truncate(interaction.options.getString("name") ?? prompt, 95),
       type: ChannelType.PublicThread,
       autoArchiveDuration: 1440,
     });
