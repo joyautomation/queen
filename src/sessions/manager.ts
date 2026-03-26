@@ -11,6 +11,7 @@ import {
   updateSessionAgentId,
   endSessionRecord,
   addSessionCost,
+  getConfig,
 } from "../db/queries";
 import { truncate } from "../utils/discord";
 
@@ -25,6 +26,11 @@ Your output is displayed in a Discord thread, not a terminal. Format accordingly
 - Avoid HTML tags — Discord ignores them.
 `.trim();
 
+export interface SpawnOptions {
+  model?: string;
+  effort?: string;
+}
+
 export interface Pawn {
   threadId: string;
   channelId: string;
@@ -35,6 +41,8 @@ export interface Pawn {
   abortController: AbortController;
   projectName: string | null;
   messageQueue: string[];
+  model: string | undefined;
+  effort: string | undefined;
 }
 
 /** Active pawns keyed by Discord thread ID. */
@@ -63,6 +71,7 @@ export function spawnPawn(
   prompt: string,
   projectName: string | null,
   resumeSessionId?: string | null,
+  opts?: SpawnOptions,
 ): void {
   if (pawns.size >= MAX_PAWNS) {
     throw new Error(
@@ -71,6 +80,8 @@ export function spawnPawn(
   }
 
   const abortController = new AbortController();
+  const model = opts?.model || getConfig("default_model") || undefined;
+  const effort = opts?.effort || getConfig("default_effort") || undefined;
 
   const pawn: Pawn = {
     threadId: thread.id,
@@ -80,6 +91,8 @@ export function spawnPawn(
     startedAt: new Date(),
     status: "running",
     abortController,
+    model,
+    effort,
     projectName,
     messageQueue: [],
   };
@@ -168,6 +181,8 @@ async function runQuery(
   const options: Record<string, any> = {
     cwd: pawn.cwd,
     permissionMode: "auto",
+    ...(pawn.model && { model: pawn.model }),
+    ...(pawn.effort && { effort: pawn.effort }),
     abortController: pawn.abortController,
     settingSources: ["user", "project", "local"],
     allowedTools: [

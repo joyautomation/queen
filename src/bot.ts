@@ -19,6 +19,7 @@ import * as killCmd from "./commands/kill";
 import * as stopCmd from "./commands/stop";
 import * as pawnsCmd from "./commands/pawns";
 import * as usageCmd from "./commands/usage";
+import * as configCmd from "./commands/config";
 
 // ---------------------------------------------------------------------------
 // Command registry
@@ -36,6 +37,7 @@ commands.set("kill", killCmd);
 commands.set("stop", stopCmd);
 commands.set("pawns", pawnsCmd);
 commands.set("usage", usageCmd);
+commands.set("config", configCmd);
 
 // ---------------------------------------------------------------------------
 // Client

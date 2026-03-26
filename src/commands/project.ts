@@ -55,6 +55,27 @@ export const data = new SlashCommandBuilder()
           .setName("prompt")
           .setDescription("Initial prompt for Claude")
           .setRequired(true),
+      )
+      .addStringOption((opt) =>
+        opt
+          .setName("model")
+          .setDescription("Model override (default: from /config)")
+          .addChoices(
+            { name: "opus", value: "claude-opus-4-6" },
+            { name: "sonnet", value: "claude-sonnet-4-6" },
+            { name: "haiku", value: "claude-haiku-4-5" },
+          ),
+      )
+      .addStringOption((opt) =>
+        opt
+          .setName("effort")
+          .setDescription("Effort override (default: from /config)")
+          .addChoices(
+            { name: "low", value: "low" },
+            { name: "medium", value: "medium" },
+            { name: "high", value: "high" },
+            { name: "max", value: "max" },
+          ),
       ),
   );
 
@@ -163,7 +184,9 @@ async function handleSpawn(
       `**Project:** ${name}\n**Prompt:** ${prompt}\n**Directory:** \`${project.path}\`\n\u2500\u2500\u2500`,
     );
 
-    spawnPawn(thread, project.path, prompt, name);
+    const model = interaction.options.getString("model") ?? undefined;
+    const effort = interaction.options.getString("effort") ?? undefined;
+    spawnPawn(thread, project.path, prompt, name, null, { model, effort });
 
     await interaction.editReply(`Pawn spawned \u2192 ${thread}`);
   } catch (err: any) {

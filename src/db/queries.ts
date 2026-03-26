@@ -1,5 +1,27 @@
 import { getDb } from "./schema";
 
+// --- Config ---
+
+export function getConfig(key: string): string | undefined {
+  const row = getDb()
+    .prepare("SELECT value FROM config WHERE key = ?")
+    .get(key) as { value: string } | undefined;
+  return row?.value;
+}
+
+export function setConfig(key: string, value: string): void {
+  getDb()
+    .prepare("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)")
+    .run(key, value);
+}
+
+export function getAllConfig(): Record<string, string> {
+  const rows = getDb()
+    .prepare("SELECT key, value FROM config ORDER BY key")
+    .all() as { key: string; value: string }[];
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+}
+
 export interface Project {
   name: string;
   path: string;
