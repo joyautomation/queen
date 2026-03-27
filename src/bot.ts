@@ -4,6 +4,7 @@ import {
   REST,
   Routes,
   ChatInputCommandInteraction,
+  AutocompleteInteraction,
   Events,
   type Message,
   type Attachment,
@@ -30,6 +31,7 @@ import * as effortCmd from "./commands/effort";
 interface Command {
   data: { toJSON(): RESTPostAPIChatInputApplicationCommandsJSONBody };
   execute(interaction: ChatInputCommandInteraction): Promise<void>;
+  autocomplete?(interaction: AutocompleteInteraction): Promise<void>;
 }
 
 const commands = new Map<string, Command>();
@@ -60,6 +62,15 @@ export function createClient(): Client {
   client.once(Events.ClientReady, async (c) => {
     console.log(`[queen] Logged in as ${c.user.tag}`);
     await registerCommands();
+  });
+
+  // --- Autocomplete ---
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isAutocomplete()) return;
+    const cmd = commands.get(interaction.commandName);
+    if (cmd?.autocomplete) {
+      await cmd.autocomplete(interaction).catch(() => {});
+    }
   });
 
   // --- Slash commands ---

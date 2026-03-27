@@ -1,5 +1,6 @@
 import {
   ChatInputCommandInteraction,
+  AutocompleteInteraction,
   SlashCommandBuilder,
   ChannelType,
   TextChannel,
@@ -42,7 +43,7 @@ export const data = new SlashCommandBuilder()
       .setName("remove")
       .setDescription("Unregister a project")
       .addStringOption((opt) =>
-        opt.setName("name").setDescription("Project name").setRequired(true),
+        opt.setName("name").setDescription("Project name").setRequired(true).setAutocomplete(true),
       ),
   )
   .addSubcommand((sub) =>
@@ -50,7 +51,7 @@ export const data = new SlashCommandBuilder()
       .setName("spawn")
       .setDescription("Spawn a pawn in a registered project")
       .addStringOption((opt) =>
-        opt.setName("name").setDescription("Project name").setRequired(true),
+        opt.setName("name").setDescription("Project name").setRequired(true).setAutocomplete(true),
       )
       .addStringOption((opt) =>
         opt
@@ -95,7 +96,7 @@ export const data = new SlashCommandBuilder()
       .setName("config")
       .setDescription("Set default model/effort for a project")
       .addStringOption((opt) =>
-        opt.setName("name").setDescription("Project name").setRequired(true),
+        opt.setName("name").setDescription("Project name").setRequired(true).setAutocomplete(true),
       )
       .addStringOption((opt) =>
         opt
@@ -121,6 +122,18 @@ export const data = new SlashCommandBuilder()
           ),
       ),
   );
+
+export async function autocomplete(
+  interaction: AutocompleteInteraction,
+): Promise<void> {
+  const focused = interaction.options.getFocused().toLowerCase();
+  const projects = listProjects();
+  const filtered = projects
+    .filter((p) => p.name.toLowerCase().includes(focused))
+    .slice(0, 25) // Discord max 25 choices
+    .map((p) => ({ name: p.name, value: p.name }));
+  await interaction.respond(filtered);
+}
 
 export async function execute(
   interaction: ChatInputCommandInteraction,
