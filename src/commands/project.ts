@@ -13,7 +13,7 @@ import {
   getProject,
   setProjectDefaults,
 } from "../db/queries";
-import { spawnPawn } from "../sessions/manager";
+import { spawnPawn, canSpawn } from "../sessions/manager";
 import { truncate, shortModel } from "../utils/discord";
 import { downloadAttachments } from "../utils/attachments";
 
@@ -247,6 +247,12 @@ async function handleSpawn(
       content: `Project **${name}** not found. Use \`/project add\` first.`,
       flags: 64,
     });
+    return;
+  }
+
+  const check = canSpawn();
+  if (!check.ok) {
+    await interaction.reply({ content: check.reason!, flags: 64 });
     return;
   }
 

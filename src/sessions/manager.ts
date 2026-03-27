@@ -50,6 +50,13 @@ export interface Pawn {
 /** Active pawns keyed by Discord thread ID. */
 const pawns = new Map<string, Pawn>();
 
+export function canSpawn(): { ok: boolean; reason?: string } {
+  if (pawns.size >= MAX_PAWNS) {
+    return { ok: false, reason: `Max concurrent pawns reached (${MAX_PAWNS}). Kill a session first.` };
+  }
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------

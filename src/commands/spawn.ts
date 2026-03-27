@@ -6,7 +6,7 @@ import {
 } from "discord.js";
 import { existsSync } from "fs";
 import { resolve } from "path";
-import { spawnPawn } from "../sessions/manager";
+import { spawnPawn, canSpawn } from "../sessions/manager";
 import { truncate, shortModel } from "../utils/discord";
 import { downloadAttachments } from "../utils/attachments";
 
@@ -78,6 +78,12 @@ export async function execute(
       content: "Run this command in a text channel (not inside a thread).",
       flags: 64,
     });
+    return;
+  }
+
+  const check = canSpawn();
+  if (!check.ok) {
+    await interaction.reply({ content: check.reason!, flags: 64 });
     return;
   }
 
