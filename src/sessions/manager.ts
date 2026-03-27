@@ -2,6 +2,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  StringSelectMenuBuilder,
   type ThreadChannel,
 } from "discord.js";
 import { query } from "@anthropic-ai/claude-agent-sdk";
@@ -26,6 +27,8 @@ Your output is displayed in a Discord thread, not a terminal. Format accordingly
 - Messages are split at 2000 characters. Keep responses concise.
 - Lists and bullet points render fine.
 - Avoid HTML tags — Discord ignores them.
+
+When you need user input or want to present choices, use the AskUserQuestion tool. It renders as interactive buttons in Discord. Use it for plan confirmation, approach selection, or any multiple-choice decisions.
 `.trim();
 
 export interface SpawnOptions {
@@ -313,7 +316,17 @@ function createPermissionHandler(
       decisionReason?: string;
       toolUseID: string;
     },
-  ): Promise<{ behavior: "allow" | "deny"; message?: string; toolUseID?: string }> => {
+  ): Promise<{
+    behavior: "allow" | "deny";
+    message?: string;
+    toolUseID?: string;
+    updatedInput?: Record<string, unknown>;
+  }> => {
+    // --- Handle AskUserQuestion as interactive Discord UI ---
+    if (toolName === "AskUserQuestion") {
+      return handleAskUserQuestion(thread, input, options.toolUseID);
+    }
+
     // Build a human-readable description
     const title = options.title || `\`${toolName}\` wants to run`;
     const detail = formatPermissionDetail(toolName, input);
@@ -370,6 +383,102 @@ function createPermissionHandler(
         toolUseID: options.toolUseID,
       };
     }
+  };
+}
+
+async function handleAskUserQuestion(
+  thread: ThreadChannel,
+  input: Record<string, unknown>,
+  toolUseID: string,
+): Promise<{
+  behavior: "allow" | "deny";
+  message?: string;
+  toolUseID?: string;
+  updatedInput?: Record<string, unknown>;
+}> {
+  const questions = (input.questions as any[]) ?? [];
+  const answers: Record<string, string> = {};
+
+  for (const q of questions) {
+    const questionText: string = q.question ?? "Choose an option:";
+    const opts: { label: string; description: string }[] = q.options ?? [];
+
+    // Build buttons for each option + "Other" for free text
+    const buttons = opts.map((opt: any, i: number) =>
+      new ButtonBuilder()
+        .setCustomId(`q_opt_${i}`)
+        .setLabel(truncate(opt.label, 80))
+        .setStyle(ButtonStyle.Primary),
+    );
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId("q_opt_other")
+        .setLabel("Other...")
+        .setStyle(ButtonStyle.Secondary),
+    );
+
+    // Build description text showing option details
+    const optDetails = opts
+      .map((opt: any) => `**${opt.label}** \u2014 ${opt.description}`)
+      .join("\n");
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
+
+    const msg = await thread.send({
+      content: `**${questionText}**\n${optDetails}`,
+      components: [row],
+    });
+
+    try {
+      const click = await msg.awaitMessageComponent({
+        filter: (i) => i.customId.startsWith("q_opt_"),
+        time: PERMISSION_TIMEOUT_MS,
+      });
+
+      if (click.customId === "q_opt_other") {
+        await click.update({
+          content: `**${questionText}**\n${optDetails}\n\n*Type your answer below:*`,
+          components: [],
+        });
+
+        // Wait for the next text message in the thread
+        const collected = await thread.awaitMessages({
+          filter: (m) => !m.author.bot,
+          max: 1,
+          time: PERMISSION_TIMEOUT_MS,
+        });
+
+        const reply = collected.first()?.content ?? "No answer provided";
+        answers[questionText] = reply;
+        await thread
+          .send(`Selected: **${reply}**`)
+          .catch(() => {});
+      } else {
+        const idx = parseInt(click.customId.replace("q_opt_", ""), 10);
+        const selected = opts[idx]?.label ?? "Unknown";
+        answers[questionText] = selected;
+
+        await click.update({
+          content: `**${questionText}**\nSelected: **${selected}**`,
+          components: [],
+        });
+      }
+    } catch {
+      await msg
+        .edit({ content: `**Timed out**: ${questionText}`, components: [] })
+        .catch(() => {});
+      return {
+        behavior: "deny",
+        message: "Question timed out",
+        toolUseID,
+      };
+    }
+  }
+
+  return {
+    behavior: "allow",
+    toolUseID,
+    updatedInput: { ...input, answers },
   };
 }
 
