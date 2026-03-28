@@ -1,16 +1,18 @@
 /**
  * Split text into chunks that fit within Discord's 2000-char message limit.
  * Prefers splitting at newlines, then spaces, then hard-cuts.
+ * Handles code blocks: if a split occurs inside a ``` block, closes it at the
+ * end of the chunk and reopens it at the start of the next.
  */
 export function chunkMessage(text: string, maxLen = 1990): string[] {
   if (text.length <= maxLen) return [text];
 
-  const chunks: string[] = [];
+  const rawChunks: string[] = [];
   let remaining = text;
 
   while (remaining.length > 0) {
     if (remaining.length <= maxLen) {
-      chunks.push(remaining);
+      rawChunks.push(remaining);
       break;
     }
 
@@ -25,11 +27,40 @@ export function chunkMessage(text: string, maxLen = 1990): string[] {
       splitIndex = maxLen;
     }
 
-    chunks.push(remaining.slice(0, splitIndex));
+    rawChunks.push(remaining.slice(0, splitIndex));
     remaining = remaining.slice(splitIndex).replace(/^\n/, "");
   }
 
-  return chunks;
+  // Fix code blocks split across chunks
+  const result: string[] = [];
+  let inCodeBlock = false;
+  let codeFence = "```";
+
+  for (let chunk of rawChunks) {
+    // If we're continuing a code block from the previous chunk, reopen it
+    if (inCodeBlock) {
+      chunk = codeFence + "\n" + chunk;
+    }
+
+    // Count fence markers in this chunk to determine if we end inside a code block
+    const fences = chunk.match(/^```/gm);
+    const fenceCount = fences ? fences.length : 0;
+
+    // Odd number of fences means we're inside an unclosed code block
+    if (fenceCount % 2 === 1) {
+      // Extract the fence language hint from the opening fence
+      const openMatch = chunk.match(/```(\w*)/);
+      codeFence = openMatch ? "```" + (openMatch[1] ?? "") : "```";
+      chunk += "\n```";
+      inCodeBlock = true;
+    } else {
+      inCodeBlock = false;
+    }
+
+    result.push(chunk);
+  }
+
+  return result;
 }
 
 /** Truncate a string to `max` chars, adding ellipsis if truncated. */
