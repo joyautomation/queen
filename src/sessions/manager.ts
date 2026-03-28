@@ -299,7 +299,8 @@ async function runQuery(
 // Discord permission buttons
 // ---------------------------------------------------------------------------
 
-const PERMISSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const PERMISSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for permission prompts
+const QUESTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours for user questions
 
 function createPermissionHandler(
   thread: ThreadChannel,
@@ -322,6 +323,8 @@ function createPermissionHandler(
     toolUseID?: string;
     updatedInput?: Record<string, unknown>;
   }> => {
+    console.error(`[queen] canUseTool called: ${toolName}`);
+
     // --- Handle AskUserQuestion as interactive Discord UI ---
     if (toolName === "AskUserQuestion") {
       return handleAskUserQuestion(thread, input, options.toolUseID);
@@ -432,7 +435,7 @@ async function handleAskUserQuestion(
     try {
       const click = await msg.awaitMessageComponent({
         filter: (i) => i.customId.startsWith("q_opt_"),
-        time: PERMISSION_TIMEOUT_MS,
+        time: QUESTION_TIMEOUT_MS,
       });
 
       if (click.customId === "q_opt_other") {
@@ -445,7 +448,7 @@ async function handleAskUserQuestion(
         const collected = await thread.awaitMessages({
           filter: (m) => !m.author.bot,
           max: 1,
-          time: PERMISSION_TIMEOUT_MS,
+          time: QUESTION_TIMEOUT_MS,
         });
 
         const reply = collected.first()?.content ?? "No answer provided";
