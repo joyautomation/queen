@@ -227,6 +227,7 @@ async function runQuery(
       "Grep",
       "Agent",
       "Bash",
+      "mcp__*",
     ],
     canUseTool: createPermissionHandler(thread, pawn.abortController.signal),
     systemPrompt: {
