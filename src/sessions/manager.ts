@@ -18,7 +18,11 @@ import {
 } from "../db/queries";
 import { truncate } from "../utils/discord";
 
-const MAX_PAWNS = Number(process.env.QUEEN_MAX_PAWNS) || 5;
+const MAX_PAWNS = Number(process.env.QUEEN_MAX_PAWNS) || 20;
+
+export function getMaxPawns(): number {
+  return MAX_PAWNS;
+}
 
 const DISCORD_SYSTEM_PROMPT = `
 Your output is displayed in a Discord thread, not a terminal. Format accordingly:
