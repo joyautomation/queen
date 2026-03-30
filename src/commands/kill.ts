@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { killPawn, getPawn } from "../sessions/manager";
+import { getSessionRecord, endSessionRecord } from "../db/queries";
 
 export const data = new SlashCommandBuilder()
   .setName("kill")
@@ -19,15 +20,24 @@ export async function execute(
   }
 
   const pawn = getPawn(channel.id);
-  if (!pawn) {
-    await interaction.reply({
-      content: "No active session in this thread.",
-      flags: 64,
-    });
+  if (pawn) {
+    killPawn(channel.id);
+    await interaction.reply("Pawn killed. Locking thread.");
+    await channel.setLocked(true).catch(() => {});
     return;
   }
 
-  killPawn(channel.id);
-  await interaction.reply("Pawn killed. Locking thread.");
-  await channel.setLocked(true).catch(() => {});
+  // No active pawn — check if it's a dormant session in the DB
+  const session = getSessionRecord(channel.id);
+  if (session && session.status !== "killed") {
+    endSessionRecord(channel.id, "killed");
+    await interaction.reply("Dormant session killed. Locking thread.");
+    await channel.setLocked(true).catch(() => {});
+    return;
+  }
+
+  await interaction.reply({
+    content: "No session found in this thread.",
+    flags: 64,
+  });
 }
