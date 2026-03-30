@@ -111,6 +111,18 @@ export function updateSessionAgentId(
     .run(sessionId, threadId);
 }
 
+/** Get sessions that have been dormant for more than `days` days. */
+export function getStaleDormantSessions(days: number): SessionRecord[] {
+  return getDb()
+    .prepare(
+      `SELECT * FROM sessions
+       WHERE session_id IS NOT NULL
+         AND status NOT IN ('killed', 'error')
+         AND started_at <= datetime('now', ?)`,
+    )
+    .all(`-${days} days`) as SessionRecord[];
+}
+
 export function endSessionRecord(threadId: string, status: string): void {
   getDb()
     .prepare(

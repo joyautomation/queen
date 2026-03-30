@@ -11,7 +11,7 @@ import {
 } from "discord.js";
 import type { RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js";
 import { sendFollowUp, getPawn, spawnPawn } from "./sessions/manager";
-import { getSessionRecord } from "./db/queries";
+import { getSessionRecord, getStaleDormantSessions, endSessionRecord } from "./db/queries";
 import { downloadAttachments } from "./utils/attachments";
 
 import * as spawnCmd from "./commands/spawn";
@@ -62,6 +62,9 @@ export function createClient(): Client {
   client.once(Events.ClientReady, async (c) => {
     console.log(`[queen] Logged in as ${c.user.tag}`);
     await registerCommands();
+    await cleanupStaleSessions(c);
+    // Run cleanup daily
+    setInterval(() => cleanupStaleSessions(c).catch(() => {}), 24 * 60 * 60 * 1000);
   });
 
   // --- Autocomplete ---
@@ -219,4 +222,33 @@ async function buildPromptWithAttachments(message: Message): Promise<string> {
   }
 
   return parts.join("\n\n");
+}
+
+// ---------------------------------------------------------------------------
+// Stale session cleanup
+// ---------------------------------------------------------------------------
+
+const STALE_DAYS = 7;
+
+async function cleanupStaleSessions(client: any): Promise<void> {
+  const stale = getStaleDormantSessions(STALE_DAYS);
+  if (stale.length === 0) return;
+
+  let cleaned = 0;
+  for (const session of stale) {
+    endSessionRecord(session.thread_id, "killed");
+    try {
+      const channel = await client.channels.fetch(session.thread_id).catch(() => null);
+      if (channel?.isThread()) {
+        await channel.setLocked(true).catch(() => {});
+      }
+    } catch {
+      // Thread may be deleted or inaccessible
+    }
+    cleaned++;
+  }
+
+  if (cleaned > 0) {
+    console.log(`[queen] Cleaned up ${cleaned} stale session(s) (dormant > ${STALE_DAYS} days)`);
+  }
 }
