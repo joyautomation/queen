@@ -97,16 +97,13 @@ export async function streamToDiscord(
           costUsd += msg.total_cost_usd;
         }
         if (msg.subtype === "success") {
-          const cost =
-            typeof msg.total_cost_usd === "number"
-              ? `$${msg.total_cost_usd.toFixed(4)}`
-              : "unknown cost";
           const turns = msg.num_turns ?? "?";
           const duration = msg.duration_ms
             ? `${Math.round(msg.duration_ms / 1000)}s`
             : "?";
+          const tokens = formatTokenUsage(msg.usage);
           await thread.send(
-            `**Session complete** \u2014 ${turns} turns, ${duration}, ${cost}`,
+            `**Session complete** \u2014 ${turns} turns, ${duration}, ${tokens}`,
           );
         } else {
           const errors = Array.isArray(msg.errors)
@@ -137,6 +134,25 @@ export async function streamToDiscord(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function formatTokenUsage(usage: any): string {
+  if (!usage) return "unknown tokens";
+  const input = usage.input_tokens ?? 0;
+  const output = usage.output_tokens ?? 0;
+  const cacheRead = usage.cache_read_input_tokens ?? 0;
+  const total = input + output;
+  const parts = [`${formatK(total)} tokens`];
+  if (cacheRead > 0) {
+    parts.push(`${formatK(cacheRead)} cached`);
+  }
+  return parts.join(", ");
+}
+
+function formatK(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
 
 /**
  * Detect markdown tables and reformat them as properly aligned
