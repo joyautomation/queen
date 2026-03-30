@@ -28,5 +28,6 @@ export async function execute(
   }
 
   killPawn(channel.id);
-  await interaction.reply("Pawn killed.");
+  await interaction.reply("Pawn killed. Locking thread.");
+  await channel.setLocked(true).catch(() => {});
 }
