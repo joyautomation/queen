@@ -23,6 +23,9 @@ import * as usageCmd from "./commands/usage";
 import * as configCmd from "./commands/config";
 import * as modelCmd from "./commands/model";
 import * as effortCmd from "./commands/effort";
+import * as skillsCmd from "./commands/skills";
+import * as commandsCmd from "./commands/commands";
+import * as runCmd from "./commands/run";
 
 // ---------------------------------------------------------------------------
 // Command registry
@@ -44,6 +47,9 @@ commands.set("usage", usageCmd);
 commands.set("config", configCmd);
 commands.set("model", modelCmd);
 commands.set("effort", effortCmd);
+commands.set("skills", skillsCmd);
+commands.set("commands", commandsCmd);
+commands.set("run", runCmd);
 
 // ---------------------------------------------------------------------------
 // Client

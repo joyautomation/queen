@@ -15,7 +15,7 @@ import {
   setProjectDefaults,
 } from "../db/queries";
 import { spawnPawn, canSpawn } from "../sessions/manager";
-import { truncate, shortModel } from "../utils/discord";
+import { truncate, shortModel, chunkMessage } from "../utils/discord";
 import { downloadAttachments } from "../utils/attachments";
 
 export const data = new SlashCommandBuilder()
@@ -194,7 +194,11 @@ async function handleList(
     if (extras.length > 0) line += ` (${extras.join(", ")})`;
     return line;
   });
-  await interaction.reply(lines.join("\n"));
+  const chunks = chunkMessage(lines.join("\n"));
+  await interaction.reply({ content: chunks[0], flags: 64 });
+  for (const chunk of chunks.slice(1)) {
+    await interaction.followUp({ content: chunk, flags: 64 });
+  }
 }
 
 async function handleConfig(

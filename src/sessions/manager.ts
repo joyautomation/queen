@@ -33,6 +33,8 @@ Your output is displayed in a Discord thread, not a terminal. Format accordingly
 - Avoid HTML tags — Discord ignores them.
 
 When you need user input or want to present choices, use the AskUserQuestion tool. It renders as interactive buttons in Discord. Use it for plan confirmation, approach selection, or any multiple-choice decisions.
+
+When ExitPlanMode is approved, the user has already confirmed they want you to proceed. Start implementing immediately — do NOT re-summarize the plan or ask for further confirmation.
 `.trim();
 
 export interface SpawnOptions {
@@ -311,6 +313,8 @@ function createPermissionHandler(
   thread: ThreadChannel,
   signal: AbortSignal,
 ) {
+  let exitPlanModeApproved = false;
+
   return async (
     toolName: string,
     input: Record<string, unknown>,
@@ -333,6 +337,17 @@ function createPermissionHandler(
     // --- Handle AskUserQuestion as interactive Discord UI ---
     if (toolName === "AskUserQuestion") {
       return handleAskUserQuestion(thread, input, options.toolUseID);
+    }
+
+    // --- Handle ExitPlanMode with a clear "proceed?" prompt ---
+    if (toolName === "ExitPlanMode") {
+      // Auto-allow subsequent ExitPlanMode calls (Claude sometimes calls it twice)
+      if (exitPlanModeApproved) {
+        return { behavior: "allow", updatedInput: input, toolUseID: options.toolUseID };
+      }
+      return handleExitPlanMode(thread, input, options.toolUseID, () => {
+        exitPlanModeApproved = true;
+      });
     }
 
     // Build a human-readable description
@@ -373,7 +388,7 @@ function createPermissionHandler(
       });
 
       if (approved) {
-        return { behavior: "allow", toolUseID: options.toolUseID };
+        return { behavior: "allow", updatedInput: input, toolUseID: options.toolUseID };
       }
       return {
         behavior: "deny",
@@ -488,6 +503,62 @@ async function handleAskUserQuestion(
     toolUseID,
     updatedInput: { ...input, answers },
   };
+}
+
+async function handleExitPlanMode(
+  thread: ThreadChannel,
+  input: Record<string, unknown>,
+  toolUseID: string,
+  onApprove: () => void,
+): Promise<{
+  behavior: "allow" | "deny";
+  message?: string;
+  toolUseID?: string;
+  updatedInput?: Record<string, unknown>;
+}> {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("plan_proceed")
+      .setLabel("Proceed with implementation")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("plan_cancel")
+      .setLabel("Cancel plan")
+      .setStyle(ButtonStyle.Danger),
+  );
+
+  const msg = await thread.send({
+    content: `**Plan ready** \u2014 Review the plan above, then choose:`,
+    components: [row],
+  });
+
+  let click;
+  try {
+    click = await msg.awaitMessageComponent({
+      filter: (i) => i.customId === "plan_proceed" || i.customId === "plan_cancel",
+      time: QUESTION_TIMEOUT_MS,
+    });
+  } catch {
+    await msg
+      .edit({ content: `**Plan review timed out** \u2014 implementation cancelled`, components: [] })
+      .catch(() => {});
+    return { behavior: "deny", message: "Plan review timed out", toolUseID };
+  }
+
+  const approved = click.customId === "plan_proceed";
+
+  // Register approval BEFORE any awaits that could throw
+  if (approved) onApprove();
+
+  // Update the button message — best effort, don't let Discord API errors affect the decision
+  const updatedContent = approved ? `Proceeding with implementation\u2026` : `Plan cancelled.`;
+  await click.update({ content: updatedContent, components: [] })
+    .catch(() => msg.edit({ content: updatedContent, components: [] }).catch(() => {}));
+
+  if (approved) {
+    return { behavior: "allow", updatedInput: input, toolUseID };
+  }
+  return { behavior: "deny", message: "Plan cancelled by user", toolUseID };
 }
 
 function formatPermissionDetail(
