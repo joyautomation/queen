@@ -5,8 +5,11 @@ import {
 } from "discord.js";
 import { readdirSync, existsSync } from "fs";
 import { join } from "path";
+import { homedir } from "os";
 import { getSessionRecord } from "../db/queries";
 import { getPawn, sendFollowUp } from "../sessions/manager";
+
+const GLOBAL_COMMANDS_DIR = join(homedir(), ".claude", "commands");
 
 export const data = new SlashCommandBuilder()
   .setName("run")
@@ -102,18 +105,19 @@ function resolveThreadCwd(threadId: string): string | null {
 }
 
 function listCommandNames(projectPath: string): string[] {
-  const commandsDir = join(projectPath, ".claude", "commands");
-  if (!existsSync(commandsDir)) return [];
+  const dirs = [join(projectPath, ".claude", "commands"), GLOBAL_COMMANDS_DIR];
+  const names = new Set<string>();
 
-  let entries: string[];
-  try {
-    entries = readdirSync(commandsDir);
-  } catch {
-    return [];
+  for (const dir of dirs) {
+    if (!existsSync(dir)) continue;
+    try {
+      for (const entry of readdirSync(dir)) {
+        if (entry.endsWith(".md")) names.add(entry.slice(0, -3));
+      }
+    } catch {
+      // ignore
+    }
   }
 
-  return entries
-    .filter((e) => e.endsWith(".md"))
-    .map((e) => e.slice(0, -3))
-    .sort();
+  return Array.from(names).sort();
 }

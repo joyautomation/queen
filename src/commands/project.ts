@@ -69,7 +69,7 @@ export const data = new SlashCommandBuilder()
           .setName("model")
           .setDescription("Model override (default: from /config)")
           .addChoices(
-            { name: "opus", value: "claude-opus-4-6" },
+            { name: "opus", value: "claude-opus-4-7" },
             { name: "sonnet", value: "claude-sonnet-4-6" },
             { name: "haiku", value: "claude-haiku-4-5" },
           ),
@@ -103,7 +103,7 @@ export const data = new SlashCommandBuilder()
           .setName("model")
           .setDescription("Default model for this project")
           .addChoices(
-            { name: "opus", value: "claude-opus-4-6" },
+            { name: "opus", value: "claude-opus-4-7" },
             { name: "sonnet", value: "claude-sonnet-4-6" },
             { name: "haiku", value: "claude-haiku-4-5" },
             { name: "clear", value: "clear" },

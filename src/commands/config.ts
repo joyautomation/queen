@@ -2,7 +2,7 @@ import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { getConfig, setConfig, getAllConfig } from "../db/queries";
 
 const VALID_MODELS = [
-  "claude-opus-4-6",
+  "claude-opus-4-7",
   "claude-sonnet-4-6",
   "claude-haiku-4-5",
   "opus",
@@ -22,10 +22,10 @@ export const data = new SlashCommandBuilder()
       .addStringOption((opt) =>
         opt
           .setName("value")
-          .setDescription("Model name (e.g. opus, sonnet, haiku, claude-opus-4-6)")
+          .setDescription("Model name (e.g. opus, sonnet, haiku, claude-opus-4-7)")
           .setRequired(true)
           .addChoices(
-            { name: "opus (claude-opus-4-6)", value: "claude-opus-4-6" },
+            { name: "opus (claude-opus-4-7)", value: "claude-opus-4-7" },
             { name: "sonnet (claude-sonnet-4-6)", value: "claude-sonnet-4-6" },
             { name: "haiku (claude-haiku-4-5)", value: "claude-haiku-4-5" },
           ),

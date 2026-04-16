@@ -10,7 +10,7 @@ export const data = new SlashCommandBuilder()
       .setName("value")
       .setDescription("Model to switch to (omit to show current)")
       .addChoices(
-        { name: "opus", value: "claude-opus-4-6" },
+        { name: "opus", value: "claude-opus-4-7" },
         { name: "sonnet", value: "claude-sonnet-4-6" },
         { name: "haiku", value: "claude-haiku-4-5" },
       ),

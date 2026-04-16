@@ -5,8 +5,11 @@ import {
 } from "discord.js";
 import { readdirSync, readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { homedir } from "os";
 import { listProjects, getProject, getSessionRecord } from "../db/queries";
 import { getPawn } from "../sessions/manager";
+
+const GLOBAL_COMMANDS_DIR = join(homedir(), ".claude", "commands");
 
 export const data = new SlashCommandBuilder()
   .setName("commands")
@@ -46,28 +49,36 @@ export async function execute(
   }
 
   const { cwd, label } = cwdInfo;
-  const commands = loadCommands(cwd);
+  const projectCommands = loadCommands(join(cwd, ".claude", "commands"));
+  const globalCommands = loadCommands(GLOBAL_COMMANDS_DIR).filter(
+    (g) => !projectCommands.some((p) => p.name === g.name),
+  );
 
-  if (commands.length === 0) {
+  if (projectCommands.length === 0 && globalCommands.length === 0) {
     await interaction.reply({
-      content: `No commands found for **${label}**.\nAdd \`.md\` files to \`${cwd}/.claude/commands/\`.`,
+      content: `No commands found for **${label}**.\nAdd \`.md\` files to \`${cwd}/.claude/commands/\` or \`~/.claude/commands/\`.`,
       flags: 64,
     });
     return;
   }
 
-  const lines = [
-    `**Commands for ${label}** (\`${cwd}/.claude/commands/\`)`,
-    "",
-    ...commands.flatMap(({ name, hints }) => {
-      const [description, ...rest] = hints;
-      const header = description ? `**/${name}** — ${description}` : `**/${name}**`;
-      const detail = rest.map((h) => `  *${h}*`);
-      return [header, ...detail];
-    }),
-    "",
-    "*Run these by typing \`/<command> [args]\` in the thread.*",
-  ];
+  const renderCommand = ({ name, hints }: ClaudeCommand) => {
+    const [description, ...rest] = hints;
+    const header = description ? `**/${name}** — ${description}` : `**/${name}**`;
+    return [header, ...rest.map((h) => `  *${h}*`)];
+  };
+
+  const lines: string[] = [];
+  if (projectCommands.length > 0) {
+    lines.push(`**Project commands for ${label}** (\`${cwd}/.claude/commands/\`)`, "");
+    lines.push(...projectCommands.flatMap(renderCommand));
+  }
+  if (globalCommands.length > 0) {
+    if (lines.length > 0) lines.push("");
+    lines.push(`**Global commands** (\`~/.claude/commands/\`)`, "");
+    lines.push(...globalCommands.flatMap(renderCommand));
+  }
+  lines.push("", "*Run these by typing \`/<command> [args]\` in the thread.*");
 
   await interaction.reply({ content: lines.join("\n"), flags: 64 });
 }
@@ -112,8 +123,7 @@ interface ClaudeCommand {
   hints: string[]; // first 3 non-blank, non-heading lines
 }
 
-function loadCommands(projectPath: string): ClaudeCommand[] {
-  const commandsDir = join(projectPath, ".claude", "commands");
+function loadCommands(commandsDir: string): ClaudeCommand[] {
   if (!existsSync(commandsDir)) return [];
 
   let entries: string[];
