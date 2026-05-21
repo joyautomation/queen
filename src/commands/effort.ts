@@ -13,6 +13,7 @@ export const data = new SlashCommandBuilder()
         { name: "low", value: "low" },
         { name: "medium", value: "medium" },
         { name: "high", value: "high" },
+        { name: "xhigh", value: "xhigh" },
         { name: "max", value: "max" },
       ),
   );

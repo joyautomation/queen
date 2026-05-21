@@ -15,7 +15,10 @@ for (const key of required) {
 // Initialize the database and mark any stale sessions from a previous run
 import { getDb } from "./db/schema";
 import { markStaleSessions } from "./db/queries";
+import { applyBackendEnv } from "./sessions/backend";
 getDb();
+const backend = applyBackendEnv();
+console.log(`[queen] API backend: ${backend}`);
 const stale = markStaleSessions();
 if (stale > 0) {
   console.log(`[queen] Marked ${stale} stale session(s) as interrupted`);

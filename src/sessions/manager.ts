@@ -7,6 +7,7 @@ import {
 } from "discord.js";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { streamToDiscord } from "./streamer";
+import { applyBackendEnv } from "./backend";
 import {
   createSessionRecord,
   updateSessionAgentId,
@@ -218,10 +219,15 @@ async function runQuery(
   thread: ThreadChannel,
   prompt: string,
 ): Promise<void> {
+  // Sync backend env vars (CLAUDE_CODE_USE_BEDROCK) before query() reads them.
+  // On Bedrock we skip the model alias — the SDK uses ANTHROPIC_MODEL from env
+  // since Anthropic-style aliases don't map to Bedrock model IDs.
+  const backend = applyBackendEnv();
+
   const options: Record<string, any> = {
     cwd: pawn.cwd,
     permissionMode: "auto",
-    ...(pawn.model && { model: pawn.model }),
+    ...(backend === "anthropic" && pawn.model && { model: pawn.model }),
     ...(pawn.effort && { effort: pawn.effort }),
     abortController: pawn.abortController,
     settingSources: ["user", "project", "local"],

@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { getConfig, setConfig, getAllConfig } from "../db/queries";
+import { getBackend, setBackend, applyBackendEnv } from "../sessions/backend";
 
 const VALID_MODELS = [
   "claude-opus-4-7",
@@ -10,7 +11,7 @@ const VALID_MODELS = [
   "haiku",
 ];
 
-const VALID_EFFORTS = ["low", "medium", "high", "max"];
+const VALID_EFFORTS = ["low", "medium", "high", "xhigh", "max"];
 
 export const data = new SlashCommandBuilder()
   .setName("config")
@@ -44,7 +45,23 @@ export const data = new SlashCommandBuilder()
             { name: "low", value: "low" },
             { name: "medium", value: "medium" },
             { name: "high", value: "high" },
+            { name: "xhigh", value: "xhigh" },
             { name: "max", value: "max" },
+          ),
+      ),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("backend")
+      .setDescription("Switch the API backend (use 'bedrock' as a fallback during Anthropic outages)")
+      .addStringOption((opt) =>
+        opt
+          .setName("value")
+          .setDescription("Backend to use for new sessions")
+          .setRequired(true)
+          .addChoices(
+            { name: "anthropic (direct API)", value: "anthropic" },
+            { name: "bedrock (AWS fallback)", value: "bedrock" },
           ),
       ),
   )
@@ -70,12 +87,26 @@ export async function execute(
       await interaction.reply(`Default effort set to **${value}**`);
       break;
     }
+    case "backend": {
+      const value = interaction.options.getString("value", true) as
+        | "anthropic"
+        | "bedrock";
+      setBackend(value);
+      applyBackendEnv();
+      const note =
+        value === "bedrock"
+          ? "\n*New sessions will route through AWS Bedrock. Existing sessions are unaffected. Switch back with `/config backend anthropic` when the outage is over.*"
+          : "";
+      await interaction.reply(`Backend set to **${value}**${note}`);
+      break;
+    }
     case "show": {
       const cfg = getAllConfig();
       const model = cfg.default_model ?? "*(not set — uses Claude Code default)*";
       const effort = cfg.default_effort ?? "*(not set — uses Claude Code default)*";
+      const backend = getBackend();
       await interaction.reply(
-        `**Current config:**\nModel: ${model}\nEffort: ${effort}`,
+        `**Current config:**\nBackend: ${backend}\nModel: ${model}\nEffort: ${effort}`,
       );
       break;
     }
