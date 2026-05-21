@@ -18,7 +18,7 @@ import {
 } from "../db/queries";
 import { truncate } from "../utils/discord";
 
-const MAX_PAWNS = Number(process.env.QUEEN_MAX_PAWNS) || 20;
+const MAX_PAWNS = Number(process.env.QUEEN_MAX_PAWNS) || 50;
 
 export function getMaxPawns(): number {
   return MAX_PAWNS;
